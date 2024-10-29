@@ -29,7 +29,24 @@ public class FpsController : MonoBehaviour
     [SerializeField] private bool willSlideOnSlopes = true;
     [SerializeField] private bool canZoom = true;
     [SerializeField] private bool canInteract = true;
+    [SerializeField] private bool useFootSteps = true;
 
+    [Header("Footstep Parameters")] [SerializeField]
+    private float baseStepSpeed = 0.5f;
+    [SerializeField] private float crouchStepMultipler = 1.5f;
+    [SerializeField] private float sprintStepMultipler = 0.6f;
+    [SerializeField] private AudioSource footStepAudioSource = default;
+    [SerializeField] private AudioClip[] woodClips = default;
+    [SerializeField] private AudioClip[] metalClips = default;
+    [SerializeField] private AudioClip[] grassClips = default;
+    private float footStepTimer = 0;
+
+    private float GetCurrentOffset => isCrouching ? baseStepSpeed * crouchStepMultipler :
+        isSprinting ? baseStepSpeed * sprintStepMultipler : baseStepSpeed;
+    
+    
+    
+    
     [Header("Interaction")]
     [SerializeField] private Vector3 interactionRayPoint = default;
     [SerializeField] private float interactionDistance = default;
@@ -151,10 +168,56 @@ public class FpsController : MonoBehaviour
                 HandleInteractionInput();
 
             }
+
+            if (useFootSteps)
+            {
+                HandleFootSteps();
+            }
             ApplyFinalMovement();
         }
     }
 
+    void HandleFootSteps()
+    {
+        if (!_characterController.isGrounded)
+        {
+            return;
+        }
+
+        if (currentInput == Vector2.zero)
+        {
+            return;
+        }
+
+        footStepTimer -= Time.deltaTime;
+
+        if (footStepTimer <= 0)
+        {
+            if (Physics.Raycast(playerCamera.transform.position,Vector3.down, out RaycastHit hit,1.5f))
+            {
+                switch (hit.collider.tag)
+                {
+                    case "FootSteps/Wood":
+                        footStepAudioSource.PlayOneShot(woodClips[Random.Range(0,woodClips.Length -1 )]);
+                        break;
+                    case "FootSteps/Grass":
+                        footStepAudioSource.PlayOneShot(grassClips[Random.Range(0,grassClips.Length - 1)]);
+                        break;
+                    case "FootSteps/Metal":
+                        footStepAudioSource.PlayOneShot(metalClips[Random.Range(0,metalClips.Length -1 )]);
+                        break;
+                    default:
+                        footStepAudioSource.PlayOneShot(metalClips[Random.Range(0,metalClips.Length -1 )]);
+                        break;
+                    
+                }
+            }
+
+            footStepTimer = GetCurrentOffset;
+        }
+    }
+    
+    
     void HandleInteractionCheck()
     {
         // Ensure interactionRayPoint has a default value
