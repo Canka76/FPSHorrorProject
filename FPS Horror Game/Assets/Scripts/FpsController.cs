@@ -1,7 +1,10 @@
+using System;
 using System.Collections;
 using System.Numerics;
+using Unity.VisualScripting;
 using UnityEngine;
 using Quaternion = UnityEngine.Quaternion;
+using Random = UnityEngine.Random;
 using Vector2 = UnityEngine.Vector2;
 using Vector3 = UnityEngine.Vector3;
 
@@ -30,7 +33,9 @@ public class FpsController : MonoBehaviour
     [SerializeField] private bool canZoom = true;
     [SerializeField] private bool canInteract = true;
     [SerializeField] private bool useFootSteps = true;
-
+    [SerializeField] private bool useStamina = true;
+    [SerializeField] private bool canUseDoors = true;
+    
     [Header("Footstep Parameters")] [SerializeField]
     private float baseStepSpeed = 0.5f;
     [SerializeField] private float crouchStepMultipler = 1.5f;
@@ -43,9 +48,6 @@ public class FpsController : MonoBehaviour
 
     private float GetCurrentOffset => isCrouching ? baseStepSpeed * crouchStepMultipler :
         isSprinting ? baseStepSpeed * sprintStepMultipler : baseStepSpeed;
-    
-    
-    
     
     [Header("Interaction")]
     [SerializeField] private Vector3 interactionRayPoint = default;
@@ -89,7 +91,17 @@ public class FpsController : MonoBehaviour
     [SerializeField] private KeyCode zoomKey = KeyCode.Mouse1;
     [SerializeField] private KeyCode interactKey = KeyCode.F;
 
-
+    [Header("Stamina Parameters")] [SerializeField]
+    private float maxStamina = 100f;
+    [SerializeField] private float staminaRegen = 5f;
+    [SerializeField] private float staminaUseMult = 5f;
+    [SerializeField] private float staminaTimeIncrement = 0.1f;
+    [SerializeField] private float staminaValueIncrement = 2f;
+    [SerializeField] private float timeBeforeStaminaRegenStarts = 2f;
+    private float currentStamina;
+    private Coroutine regeneratingStamina;
+    public static Action<float> onStaminaChange;
+    
     [Header("Zoom Parameters")] [SerializeField]
     private float timeToZoom = 0.3f;
     private float zoomFOW = 30f;
@@ -133,6 +145,7 @@ public class FpsController : MonoBehaviour
 
         defaultFOW = playerCamera.fieldOfView;
 
+        currentStamina = maxStamina;
     }
     
     void Update()
@@ -173,10 +186,45 @@ public class FpsController : MonoBehaviour
             {
                 HandleFootSteps();
             }
+
+            if (useStamina)
+            {
+                HandleStamina();
+            }
             ApplyFinalMovement();
         }
     }
 
+    void HandleStamina()
+    {
+        if (isSprinting && currentInput != Vector2.zero)
+        {
+
+            if (regeneratingStamina != null)
+            {
+                StopCoroutine(regeneratingStamina);
+                regeneratingStamina = null;
+            }
+            currentStamina -= staminaUseMult * Time.deltaTime;
+
+            if (currentStamina < 0)
+            {
+                currentStamina = 0;
+            }
+
+            onStaminaChange?.Invoke(currentStamina);
+            if (currentStamina <= 0)
+            {
+                canSprint = false;
+            }
+        }
+
+        if (!isSprinting && currentStamina < maxStamina && regeneratingStamina == null)
+        {
+            regeneratingStamina = StartCoroutine(RegenarateStamina());
+        }
+        
+    }
     void HandleFootSteps()
     {
         if (!_characterController.isGrounded)
@@ -399,5 +447,32 @@ public class FpsController : MonoBehaviour
         duringCrouchAnimation = false;
 
         
+    }
+
+    private IEnumerator RegenarateStamina()
+    {
+        yield return new WaitForSeconds(timeBeforeStaminaRegenStarts);
+        WaitForSeconds timeToWait = new WaitForSeconds(staminaTimeIncrement);
+
+        while (currentStamina < maxStamina)
+        {
+            if (currentStamina > 0)
+            {
+                canSprint = true;
+            }
+            
+            currentStamina += staminaValueIncrement;
+
+            if (currentStamina > maxStamina)
+            {
+                currentStamina = maxStamina;
+            }
+            
+            onStaminaChange?.Invoke(currentStamina);
+            
+            yield return timeToWait;
+        }
+
+        regeneratingStamina = null;
     }
 }
