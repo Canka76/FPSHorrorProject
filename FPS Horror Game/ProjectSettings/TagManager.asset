@@ -7,6 +7,7 @@ TagManager:
   - FootSteps/Grass
   - FootSteps/Metal
   - FootSteps/Wood
+  - Item
   layers:
   - Default
   - TransparentFX
