@@ -362,6 +362,7 @@
 "Assets/Scripts/Breathing Scripts/EnemyBreathScript.cs"
 "Assets/Scripts/FpsController.cs"
 "Assets/Scripts/Interactions/DoorButton.cs"
+"Assets/Scripts/Interactions/HoldingObject.cs"
 "Assets/Scripts/Interactions/Interactible.cs"
 "Assets/Scripts/Interactions/LeftDoor.cs"
 "Assets/Scripts/Interactions/RightDoor.cs"
